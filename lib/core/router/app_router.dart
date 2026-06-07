@@ -125,7 +125,31 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
       }
 
-      // 4. Otherwise: role-check handles routing to correct dashboard
+      // 4. Parent consent check (If role == parent and consentGiven != true, redirect to /consent)
+      try {
+        final userDoc = await FirebaseFirestore.instance
+            .collection(FirebaseConstants.kColUsers)
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          final data = userDoc.data() ?? {};
+          final role = data['role'] as String? ?? '';
+          final consentGiven = data['consentGiven'] as bool? ?? false;
+
+          if (role == 'parent' && !consentGiven) {
+            return state.matchedLocation == '/consent' ? null : '/consent';
+          }
+          
+          if (state.matchedLocation == '/consent') {
+            return '/role-check';
+          }
+        }
+      } catch (_) {
+        // Fallback on read errors
+      }
+
+      // 5. Otherwise: role-check handles routing to correct dashboard
       return null;
     },
   );

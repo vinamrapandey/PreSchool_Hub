@@ -15,59 +15,11 @@ class ConsentScreen extends ConsumerStatefulWidget {
 }
 
 class _ConsentScreenState extends ConsumerState<ConsentScreen> {
-  bool _isGuardianConfirmed = false;
-  bool _isDataConsentGiven = false;
-  bool _isSaving = false;
-
-  Future<void> _acceptConsent() async {
-    if (!_isGuardianConfirmed || !_isDataConsentGiven) return;
-
-    setState(() {
-      _isSaving = true;
-    });
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await FirebaseFirestore.instance
-            .collection(FirebaseConstants.kColUsers)
-            .doc(user.uid)
-            .update({
-          'consentGiven': true,
-          'consentTimestamp': FieldValue.serverTimestamp(),
-        });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Consent submitted successfully! Welcome to the portal.'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          context.go('/parent');
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save consent: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-      }
-    }
-  }
+  bool _isLoading = false;
 
   Future<void> _declineAndLogout() async {
     setState(() {
-      _isSaving = true;
+      _isLoading = true;
     });
 
     try {
@@ -88,7 +40,44 @@ class _ConsentScreenState extends ConsumerState<ConsentScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _isSaving = false;
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _agreeConsent(String? uid) async {
+    if (uid == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await FirebaseFirestore.instance
+          .collection(FirebaseConstants.kColUsers)
+          .doc(uid)
+          .update({
+        'consentGiven': true,
+        'consentTimestamp': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        context.go('/parent');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to submit consent: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
         });
       }
     }
@@ -98,11 +87,12 @@ class _ConsentScreenState extends ConsumerState<ConsentScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final schoolBranding = ref.watch(brandingProvider);
+    final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(schoolBranding?.schoolName ?? 'Preschool Portal'),
-        automaticallyImplyLeading: false,
+        title: const Text('Data & Privacy Consent', style: TextStyle(fontWeight: FontWeight.bold)),
+        automaticallyImplyLeading: false, // No back button
       ),
       body: Center(
         child: SingleChildScrollView(
@@ -110,157 +100,191 @@ class _ConsentScreenState extends ConsumerState<ConsentScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 650),
             child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Scrollable content area
+                  Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.security_rounded,
-                          color: theme.colorScheme.primary,
-                          size: 36,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'DPDP Consent Notice',
-                            style: theme.textTheme.headlineMedium?.copyWith(
-                              color: theme.colorScheme.primary,
-                            ),
+                        // School logo & Name
+                        Center(
+                          child: Column(
+                            children: [
+                              if (schoolBranding != null && schoolBranding.logoUrl.isNotEmpty == true)
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    schoolBranding.logoUrl,
+                                    width: 80,
+                                    height: 80,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        _buildLogoPlaceholder(theme),
+                                  ),
+                                )
+                              else
+                                _buildLogoPlaceholder(theme),
+                              const SizedBox(height: 16),
+                              Text(
+                                schoolBranding?.schoolName ?? 'Preschool Portal',
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           ),
+                        ),
+                        const SizedBox(height: 32),
+                        
+                        // Body content
+                        Text(
+                          'Please review the data processing policy below before using the app.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Divider(),
+                        const SizedBox(height: 24),
+                        
+                        _buildSection(
+                          theme,
+                          title: 'What data is collected',
+                          content: 'Your child\'s name, date of birth, photo, daily attendance, and activity updates.',
+                          icon: Icons.assignment_ind_rounded,
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        _buildSection(
+                          theme,
+                          title: 'Who can access it',
+                          content: 'Your school\'s teachers and administrators only.',
+                          icon: Icons.people_alt_rounded,
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        _buildSection(
+                          theme,
+                          title: 'How it is stored',
+                          content: 'Securely on Google Firebase servers.',
+                          icon: Icons.cloud_done_rounded,
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        _buildSection(
+                          theme,
+                          title: 'Your rights',
+                          content: 'You may request data deletion by contacting your school administrator.',
+                          icon: Icons.gavel_rounded,
+                        ),
+                        const SizedBox(height: 20),
+                        
+                        _buildSection(
+                          theme,
+                          title: 'Consent requirement',
+                          content: 'This consent is required to use the app. Declining will sign you out.',
+                          icon: Icons.info_outline_rounded,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'In compliance with the Digital Personal Data Protection (DPDP) Act, 2023 (India), we require your explicit, informed consent to collect and process your child\'s personal data.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  
+                  // Fixed bottom buttons bar
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerLow,
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(16.0),
+                        bottomRight: Radius.circular(16.0),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    const Divider(),
-                    const SizedBox(height: 16),
-                    Text(
-                      '1. Nature of Data Collected',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'We collect the following personal data of your child:\n'
-                      '• Student Profile details: Name, date of birth, gender, and photograph.\n'
-                      '• Academic & Classroom updates: Group photos/videos of classroom activities.\n'
-                      '• Daily Operations data: Attendance records, teacher logs, and notices.',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '2. Purpose of Data Processing',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'The collected data is processed strictly for the following purposes:\n'
-                      '• To share classroom activity updates and photos/videos with you.\n'
-                      '• To manage preschool/daycare attendance tracking and safety.\n'
-                      '• To send urgent school notices, notifications, and emergency alerts.',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      '3. Your Rights as a Parent (Data Principal)',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Under the DPDP Act 2023, you have the right to:\n'
-                      '• Access the personal data we process regarding your child.\n'
-                      '• Correct, update, or complete any inaccurate data.\n'
-                      '• Withdraw your consent at any time, which may result in limited app functionality.',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 24),
-                    const Divider(),
-                    const SizedBox(height: 16),
-
-                    // Guardian Confirmation Checkbox
-                    CheckboxListTile(
-                      value: _isGuardianConfirmed,
-                      onChanged: _isSaving
-                          ? null
-                          : (val) {
-                              setState(() {
-                                _isGuardianConfirmed = val ?? false;
-                              });
-                            },
-                      title: const Text(
-                        'I confirm that I am the parent or lawful guardian of the child registered under this account.',
-                        style: TextStyle(fontSize: 14),
-                      ),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-
-                    // Data Consent Checkbox
-                    CheckboxListTile(
-                      value: _isDataConsentGiven,
-                      onChanged: _isSaving
-                          ? null
-                          : (val) {
-                              setState(() {
-                                _isDataConsentGiven = val ?? false;
-                              });
-                            },
-                      title: const Text(
-                        'I give my clear, specific, and informed consent to process my child\'s personal data for the educational and operational purposes described above.',
-                        style: TextStyle(fontSize: 14),
-                      ),
-                      controlAffinity: ListTileControlAffinity.leading,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // Actions Row
-                    if (_isSaving)
-                      const Center(child: CircularProgressIndicator())
-                    else
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: _declineAndLogout,
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: theme.colorScheme.error),
-                                foregroundColor: theme.colorScheme.error,
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: _declineAndLogout,
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(color: theme.colorScheme.error, width: 1.5),
+                                    foregroundColor: theme.colorScheme.error,
+                                  ),
+                                  child: const Text('Decline & Logout'),
+                                ),
                               ),
-                              child: const Text('Decline & Logout'),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: (_isGuardianConfirmed && _isDataConsentGiven)
-                                  ? _acceptConsent
-                                  : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: theme.colorScheme.primary,
-                                foregroundColor: theme.colorScheme.onPrimary,
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () => _agreeConsent(user?.uid),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: theme.colorScheme.primary,
+                                    foregroundColor: theme.colorScheme.onPrimary,
+                                  ),
+                                  child: const Text('I Agree'),
+                                ),
                               ),
-                              child: const Text('Accept & Continue'),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLogoPlaceholder(ThemeData theme) {
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(
+        Icons.school_rounded,
+        size: 40,
+        color: theme.colorScheme.onPrimaryContainer,
+      ),
+    );
+  }
+
+  Widget _buildSection(ThemeData theme, {required String title, required String content, required IconData icon}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 24, color: theme.colorScheme.primary),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                content,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
