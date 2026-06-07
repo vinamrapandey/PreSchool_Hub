@@ -6,9 +6,13 @@ class TeacherDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return const Scaffold(
-      body: Center(
-        child: Text('Teacher Dashboard'),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Teacher Dashboard')),
+      body: const Center(
+        child: Text(
+          'Teacher Dashboard — coming soon',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }

@@ -6,9 +6,13 @@ class ParentDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return const Scaffold(
-      body: Center(
-        child: Text('Parent Dashboard'),
+    return Scaffold(
+      appBar: AppBar(title: const Text('Parent Dashboard')),
+      body: const Center(
+        child: Text(
+          'Parent Dashboard — coming soon',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
