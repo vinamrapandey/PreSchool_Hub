@@ -32,6 +32,17 @@ class StudentService {
             .toList());
   }
 
+  /// Streams all students registered under a specific school.
+  Stream<List<Student>> getStudentsBySchool(String schoolId) {
+    return _firestore
+        .collection(FirebaseConstants.kColStudents)
+        .where('schoolId', isEqualTo: schoolId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => Student.fromFirestore(doc))
+            .toList());
+  }
+
   /// Adds a new student document to Firestore.
   Future<void> addStudent(Student student) async {
     try {
