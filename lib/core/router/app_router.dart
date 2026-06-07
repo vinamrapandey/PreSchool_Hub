@@ -16,7 +16,7 @@ import '../../features/parent/screens/parent_dashboard_screen.dart';
 import '../../features/teacher/screens/teacher_dashboard_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/management/screens/management_dashboard_screen.dart';
-import '../../features/super_admin/screens/super_admin_dashboard_screen.dart';
+import '../../features/super_admin/screens/super_admin_shell.dart';
 
 /// StreamProvider that listens to authentication state changes.
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -85,7 +85,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/super-admin',
-        builder: (context, state) => const SuperAdminDashboardScreen(),
+        builder: (context, state) => const SuperAdminShell(),
       ),
     ],
     redirect: (context, state) async {
@@ -102,18 +102,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/role-check';
       }
 
+      final isSuperAdminRoute = state.matchedLocation == '/super-admin';
+
       // 3. Super admin check (uid exists in super_admins collection)
+      bool isSuperAdmin = false;
       try {
         final superAdminDoc = await FirebaseFirestore.instance
             .collection(FirebaseConstants.kColSuperAdmins)
             .doc(user.uid)
             .get();
 
-        if (superAdminDoc.exists) {
-          return state.matchedLocation == '/super-admin' ? null : '/super-admin';
-        }
+        isSuperAdmin = superAdminDoc.exists;
       } catch (_) {
         // Fallback on read errors (such as security rule restricts)
+      }
+
+      if (isSuperAdmin) {
+        return isSuperAdminRoute ? null : '/super-admin';
+      } else {
+        if (isSuperAdminRoute) {
+          return '/role-check';
+        }
       }
 
       // 4. Otherwise: role-check handles routing to correct dashboard
