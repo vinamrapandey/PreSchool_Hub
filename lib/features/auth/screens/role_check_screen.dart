@@ -10,6 +10,7 @@ import '../../../shared/models/app_user.dart';
 import '../../../shared/models/school_branding.dart';
 import '../../../shared/models/user_role.dart';
 import '../../../shared/services/user_service.dart';
+import '../../../shared/services/notification_service.dart';
 
 class RoleCheckScreen extends ConsumerStatefulWidget {
   const RoleCheckScreen({super.key});
@@ -82,6 +83,14 @@ class _RoleCheckScreenState extends ConsumerState<RoleCheckScreen> {
             return;
           }
         }
+      }
+
+      // Initialize FCM Notifications
+      final notificationService = ref.read(notificationServiceProvider);
+      await notificationService.initialize(currentUser.uid);
+      await notificationService.setupForegroundHandler();
+      if (mounted) {
+        notificationService.handleNotificationTap(context);
       }
 
       // 4. Redirect based on role and DPDP consent requirement
