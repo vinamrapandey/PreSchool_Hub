@@ -84,6 +84,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         await createMockUser('parent@test.com', 'parent', 'Test Parent');
         await createMockUser('teacher@test.com', 'teacher', 'Test Teacher');
         await createMockUser('admin@test.com', 'admin', 'Test Admin');
+        await createMockUser('management@test.com', 'management', 'Test Management');
         await createMockUser('superadmin@test.com', 'super_admin', 'Test Super Admin');
         
         final parentQuery = await FirebaseFirestore.instance.collection('users').where('email', isEqualTo: 'parent@test.com').get();
