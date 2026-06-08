@@ -6,9 +6,11 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/branding_provider.dart';
 import '../../../shared/models/school_class.dart';
 import '../../../shared/services/class_service.dart';
-import 'teacher_class_tab.dart';
-import 'teacher_attendance_tab.dart';
-import 'teacher_post_tab.dart';
+import 'tabs/home_tab.dart';
+import 'tabs/attendance_tab.dart';
+import 'tabs/my_class_tab.dart';
+import 'tabs/updates_tab.dart';
+import 'components/teacher_notices_panel.dart';
 
 /// Provider resolving the class details taught by the logged-in teacher.
 final teacherClassProvider = FutureProvider<SchoolClass?>((ref) async {
@@ -28,9 +30,10 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
   int _currentIndex = 0;
 
   final List<Widget> _tabs = const [
-    TeacherClassTab(),
-    TeacherAttendanceTab(),
-    TeacherPostTab(),
+    HomeTab(),
+    AttendanceTab(),
+    MyClassTab(),
+    UpdatesTab(),
   ];
 
   Future<void> _logout() async {
@@ -53,18 +56,47 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final classAsync = ref.watch(teacherClassProvider);
+    final branding = ref.watch(brandingProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: classAsync.when(
-          data: (schoolClass) => Text(
-            schoolClass != null ? 'Class: ${schoolClass.className}' : 'Teacher Portal',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          loading: () => const Text('Loading class info...'),
-          error: (_, __) => const Text('Teacher Portal'),
+        title: Row(
+          children: [
+            if (branding != null && branding.logoUrl.isNotEmpty) ...[
+              CircleAvatar(
+                backgroundImage: NetworkImage(branding.logoUrl),
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                radius: 16,
+              ),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: classAsync.when(
+                data: (schoolClass) => Text(
+                  schoolClass != null ? schoolClass.className : 'Teacher Portal',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                loading: () => const Text('Loading class info...'),
+                error: (_, __) => const Text('Teacher Portal'),
+              ),
+            ),
+          ],
         ),
         actions: [
+          Builder(
+            builder: (context) {
+              return IconButton(
+                icon: const Badge(
+                  label: Text('2'), // Example badge, can be dynamic
+                  child: Icon(Icons.notifications_rounded),
+                ),
+                tooltip: 'Notices',
+                onPressed: () {
+                  Scaffold.of(context).openEndDrawer();
+                },
+              );
+            }
+          ),
           IconButton(
             icon: const Icon(Icons.logout_rounded),
             tooltip: 'Log Out',
@@ -106,6 +138,7 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
           ),
         ),
       ),
+      endDrawer: const TeacherNoticesPanel(),
       body: _tabs[_currentIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
@@ -116,9 +149,9 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.groups_outlined),
-            selectedIcon: Icon(Icons.groups_rounded),
-            label: 'My Class',
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Home',
           ),
           NavigationDestination(
             icon: Icon(Icons.fact_check_outlined),
@@ -126,9 +159,14 @@ class _TeacherDashboardScreenState extends ConsumerState<TeacherDashboardScreen>
             label: 'Attendance',
           ),
           NavigationDestination(
+            icon: Icon(Icons.groups_outlined),
+            selectedIcon: Icon(Icons.groups_rounded),
+            label: 'My Class',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.add_circle_outline_rounded),
             selectedIcon: Icon(Icons.add_circle_rounded),
-            label: 'Post Update',
+            label: 'Updates',
           ),
         ],
       ),
