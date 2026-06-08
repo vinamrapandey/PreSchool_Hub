@@ -45,6 +45,109 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final enteredCode = _schoolCodeController.text.trim();
 
+    // --- TEMPORARY SEED LOGIC ---
+    if (enteredCode == 'seed') {
+      try {
+        await FirebaseFirestore.instance.collection(FirebaseConstants.kColSchools).doc('test1234').set({
+          'schoolId': 'test1234',
+          'schoolName': 'Test PreSchool',
+          'logoUrl': '',
+          'primaryColorHex': '#4A90D9',
+          'isActive': true,
+        });
+
+        Future<void> createMockUser(String email, String role, String displayName) async {
+          try {
+            final userCred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+              email: email,
+              password: 'password123',
+            );
+            await FirebaseFirestore.instance.collection(FirebaseConstants.kColUsers).doc(userCred.user!.uid).set({
+              'uid': userCred.user!.uid,
+              'email': email,
+              'displayName': displayName,
+              'role': role,
+              'schoolId': 'test1234',
+              'consentGiven': false,
+            });
+            if (role == 'super_admin') {
+              await FirebaseFirestore.instance.collection('super_admins').doc(userCred.user!.uid).set({
+                'uid': userCred.user!.uid,
+                'email': email,
+              });
+            }
+          } catch (e) {
+            // Ignore if user already exists
+          }
+        }
+        
+        await createMockUser('parent@test.com', 'parent', 'Test Parent');
+        await createMockUser('teacher@test.com', 'teacher', 'Test Teacher');
+        await createMockUser('admin@test.com', 'admin', 'Test Admin');
+        await createMockUser('superadmin@test.com', 'super_admin', 'Test Super Admin');
+        
+        final parentQuery = await FirebaseFirestore.instance.collection('users').where('email', isEqualTo: 'parent@test.com').get();
+        if (parentQuery.docs.isNotEmpty) {
+          final parentUid = parentQuery.docs.first.id;
+          
+          await FirebaseFirestore.instance.collection('students').doc('child1').set({
+            'schoolId': 'test1234',
+            'classId': 'classA',
+            'name': 'Arjun',
+            'parentUids': [parentUid],
+            'photoUrl': '',
+          });
+
+          await FirebaseFirestore.instance.collection('daily_reports').doc('report1').set({
+            'schoolId': 'test1234',
+            'studentId': 'child1',
+            'classId': 'classA',
+            'date': DateTime.now().toIso8601String().substring(0, 10),
+            'mood': 'happy',
+            'breakfast': 'ateWell',
+            'lunch': 'ateWell',
+            'snack': 'notApplicable',
+            'napDuration': '45 min',
+            'teacherNote': 'Arjun had a great day today! He really enjoyed the painting activity.',
+            'teacherUid': 'teacher1',
+            'timestamp': Timestamp.now(),
+          });
+
+          await FirebaseFirestore.instance.collection('notices').doc('notice1').set({
+            'schoolId': 'test1234',
+            'title': 'Annual Sports Day',
+            'body': 'Please remember to send your child in sports uniform tomorrow.',
+            'targetRoles': ['parent'],
+            'createdByUid': 'admin1',
+            'timestamp': Timestamp.now(),
+            'isActive': true,
+            'isPinned': true,
+            'targetClassId': null,
+          });
+
+          await FirebaseFirestore.instance.collection('activity_posts').doc('post1').set({
+            'schoolId': 'test1234',
+            'classId': 'classA',
+            'teacherUid': 'teacher1',
+            'teacherName': 'Miss Sarah',
+            'content': 'Finger painting session! We learned about mixing primary colors.',
+            'activityType': 'Art',
+            'mediaUrls': [],
+            'targetRoles': ['parent'],
+            'timestamp': Timestamp.now(),
+          });
+        }
+        
+        _showErrorSnackBar('Seed complete! Test data populated for Parent Panel.');
+      } catch (e) {
+        _showErrorSnackBar('Seed error: $e');
+      } finally {
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
+    // --- END SEED LOGIC ---
+
     try {
       final docSnapshot = await FirebaseFirestore.instance
           .collection(FirebaseConstants.kColSchools)

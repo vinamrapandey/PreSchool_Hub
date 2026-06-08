@@ -112,7 +112,7 @@ class NotificationService {
 
   /// Sets up app-open navigations when tapping notifications.
   void handleNotificationTap(BuildContext context) {
-    _fcm.onMessageOpenedApp.listen((RemoteMessage message) {
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       final type = message.data['type'];
       debugPrint("Notification tapped of type: $type");
       

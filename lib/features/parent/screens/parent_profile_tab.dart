@@ -8,8 +8,17 @@ import '../../../core/providers/branding_provider.dart';
 import '../../../core/router/app_router.dart';
 import 'parent_dashboard_screen.dart';
 
-class ParentProfileTab extends ConsumerWidget {
+class ParentProfileTab extends ConsumerStatefulWidget {
   const ParentProfileTab({super.key});
+
+  @override
+  ConsumerState<ParentProfileTab> createState() => _ParentProfileTabState();
+}
+
+class _ParentProfileTabState extends ConsumerState<ParentProfileTab> {
+  bool _activityUpdates = true;
+  bool _noticeUpdates = true;
+  bool _feeReminders = true;
 
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
     try {
@@ -27,205 +36,220 @@ class ParentProfileTab extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final firebaseUser = FirebaseAuth.instance.currentUser;
+    final selectedChild = ref.watch(selectedChildProvider);
 
     if (firebaseUser == null) {
       return const Center(child: Text('User details not found.'));
     }
 
-    // Load AppUser details from ref
     final appUserAsync = ref.watch(appUserProvider(firebaseUser.uid));
-    final childrenAsync = ref.watch(parentChildrenProvider);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Parent Profile Card
-          appUserAsync.when(
-            data: (user) {
-              if (user == null) {
-                return const Text('Parent information not found.');
-              }
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 32,
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: theme.colorScheme.onPrimary,
-                        child: Text(
-                          user.displayName.isNotEmpty
-                              ? user.displayName[0].toUpperCase()
-                              : 'P',
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              user.displayName,
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              user.email,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.secondaryContainer,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                'Role: Parent',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: theme.colorScheme.onSecondaryContainer,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surfaceContainerLowest,
+      appBar: AppBar(
+        title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (selectedChild != null) _buildChildSection(theme, selectedChild),
+            const SizedBox(height: 32),
+            _buildParentSection(theme, appUserAsync),
+            const SizedBox(height: 32),
+            _buildAppSettings(theme),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChildSection(ThemeData theme, var child) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: theme.colorScheme.primaryContainer,
+              backgroundImage: child.photoUrl != null && child.photoUrl!.isNotEmpty
+                  ? CachedNetworkImageProvider(child.photoUrl!)
+                  : null,
+              child: child.photoUrl == null || child.photoUrl!.isEmpty
+                  ? Icon(Icons.person, size: 40, color: theme.colorScheme.onPrimaryContainer)
+                  : null,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(child.name, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text('Class ID: ${child.classId}', style: theme.textTheme.bodyMedium),
+                  const SizedBox(height: 2),
+                  const Text('Teacher: Miss Sarah', style: TextStyle(color: Colors.grey)), // Mock teacher
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Card(
+          elevation: 0,
+          color: theme.colorScheme.surfaceContainer,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Attendance Summary (This Month)', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _AttendanceStat(label: 'Present', count: '18', color: Colors.green),
+                    _AttendanceStat(label: 'Absent', count: '2', color: Colors.red),
+                    _AttendanceStat(label: 'Late', count: '1', color: Colors.orange),
+                  ],
+                ),
+                const Divider(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      // Request leave modal
+                    },
+                    icon: const Icon(Icons.edit_calendar_rounded),
+                    label: const Text('Request Leave'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
                 ),
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, stack) => Text('Error loading profile: $err'),
-          ),
-          
-          const SizedBox(height: 24),
-          Text(
-            'Linked Children',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
+              ],
             ),
           ),
-          const SizedBox(height: 12),
+        ),
+      ],
+    );
+  }
 
-          // Linked Children List
-          childrenAsync.when(
-            data: (children) {
-              if (children.isEmpty) {
-                return const Text(
-                  'No children linked to this parent account. Contact admin.',
-                  style: TextStyle(fontStyle: FontStyle.italic),
-                );
-              }
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: children.length,
-                itemBuilder: (context, index) {
-                  final child = children[index];
-                  final isSelected = ref.watch(selectedChildProvider)?.studentId == child.studentId;
+  Widget _buildParentSection(ThemeData theme, AsyncValue appUserAsync) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Parent Account', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        const SizedBox(height: 16),
+        Card(
+          elevation: 0,
+          color: theme.colorScheme.surfaceContainer,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                appUserAsync.when(
+                  data: (user) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const CircleAvatar(child: Icon(Icons.person)),
+                    title: Text(user?.displayName ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text(user?.email ?? ''),
+                  ),
+                  loading: () => const CircularProgressIndicator(),
+                  error: (_, __) => const Text('Error loading parent details'),
+                ),
+                const Divider(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _logout(context, ref),
+                    icon: const Icon(Icons.logout_rounded),
+                    label: const Text('Log Out'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                      side: BorderSide(color: theme.colorScheme.error),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-                  return Card(
-                    color: isSelected
-                        ? theme.colorScheme.primaryContainer.withAlpha(50)
-                        : null,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: isSelected
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.outlineVariant.withAlpha(128),
-                        width: isSelected ? 1.5 : 1,
-                      ),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      leading: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: child.photoUrl != null && child.photoUrl!.isNotEmpty
-                            ? CachedNetworkImage(
-                                imageUrl: child.photoUrl!,
-                                width: 48,
-                                height: 48,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => Container(
-                                  width: 48,
-                                  height: 48,
-                                  color: theme.colorScheme.surfaceContainerHigh,
-                                  child: const CircularProgressIndicator(strokeWidth: 2),
-                                ),
-                                errorWidget: (context, url, error) => Container(
-                                  width: 48,
-                                  height: 48,
-                                  color: theme.colorScheme.primaryContainer,
-                                  child: Icon(
-                                    Icons.face_rounded,
-                                    color: theme.colorScheme.onPrimaryContainer,
-                                  ),
-                                ),
-                              )
-                            : Container(
-                                width: 48,
-                                height: 48,
-                                color: theme.colorScheme.primaryContainer,
-                                child: Icon(
-                                  Icons.face_rounded,
-                                  color: theme.colorScheme.onPrimaryContainer,
-                                ),
-                              ),
-                      ),
-                      title: Text(
-                        child.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text('Class ID: ${child.classId}'),
-                      trailing: isSelected
-                          ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary)
-                          : OutlinedButton(
-                              onPressed: () {
-                                ref.read(selectedChildProvider.notifier).state = child;
-                              },
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                minimumSize: const Size(60, 32),
-                              ),
-                              child: const Text('Select'),
-                            ),
-                    ),
-                  );
+  Widget _buildAppSettings(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('App Settings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        const SizedBox(height: 16),
+        Card(
+          elevation: 0,
+          color: theme.colorScheme.surfaceContainer,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Column(
+            children: [
+              SwitchListTile(
+                title: const Text('Activity Updates'),
+                value: _activityUpdates,
+                onChanged: (val) => setState(() => _activityUpdates = val),
+              ),
+              SwitchListTile(
+                title: const Text('Notices'),
+                value: _noticeUpdates,
+                onChanged: (val) => setState(() => _noticeUpdates = val),
+              ),
+              SwitchListTile(
+                title: const Text('Fee Reminders'),
+                value: _feeReminders,
+                onChanged: (val) => setState(() => _feeReminders = val),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: const Text('Privacy Policy'),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                onTap: () {
+                  // Show DPDP info
                 },
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, stack) => Text('Error loading children: $err'),
+              ),
+            ],
           ),
+        ),
+      ],
+    );
+  }
+}
 
-          const SizedBox(height: 40),
+class _AttendanceStat extends StatelessWidget {
+  final String label;
+  final String count;
+  final Color color;
 
-          // Log Out Button
-          OutlinedButton.icon(
-            onPressed: () => _logout(context, ref),
-            icon: const Icon(Icons.logout_rounded),
-            label: const Text('Log Out'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: theme.colorScheme.error,
-              side: BorderSide(color: theme.colorScheme.error),
-            ),
-          ),
-        ],
-      ),
+  const _AttendanceStat({required this.label, required this.count, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(count, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+      ],
     );
   }
 }

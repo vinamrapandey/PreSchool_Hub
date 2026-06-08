@@ -16,7 +16,7 @@ class _AddSchoolScreenState extends State<AddSchoolScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _codeController = TextEditingController();
-  final _colorController = TextEditingController(value: '#4A90D9');
+  final _colorController = TextEditingController(text: '#4A90D9');
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 

@@ -86,11 +86,16 @@ class _RoleCheckScreenState extends ConsumerState<RoleCheckScreen> {
       }
 
       // Initialize FCM Notifications
-      final notificationService = ref.read(notificationServiceProvider);
-      await notificationService.initialize(currentUser.uid);
-      await notificationService.setupForegroundHandler();
-      if (mounted) {
-        notificationService.handleNotificationTap(context);
+      try {
+        final notificationService = ref.read(notificationServiceProvider);
+        await notificationService.initialize(currentUser.uid);
+        await notificationService.setupForegroundHandler();
+        if (mounted) {
+          notificationService.handleNotificationTap(context);
+        }
+      } catch (e) {
+        // Do not block login if notifications are blocked or fail
+        print('FCM Initialization warning: $e');
       }
 
       // 4. Redirect based on role and DPDP consent requirement

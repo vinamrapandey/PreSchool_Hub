@@ -10,6 +10,7 @@ class ActivityPost {
   final List<String> mediaUrls;
   final Timestamp timestamp;
   final List<String> targetRoles;
+  final String activityType; // e.g. "Art", "Story", "Outdoor", "Music", "Learning", "Meal"
 
   ActivityPost({
     required this.postId,
@@ -21,6 +22,7 @@ class ActivityPost {
     required this.mediaUrls,
     required this.timestamp,
     required this.targetRoles,
+    this.activityType = 'General',
   });
 
   /// Factory constructor to create an [ActivityPost] from a Firestore [DocumentSnapshot].
@@ -36,6 +38,7 @@ class ActivityPost {
       mediaUrls: List<String>.from(data['mediaUrls'] as List<dynamic>? ?? []),
       timestamp: data['timestamp'] as Timestamp? ?? Timestamp.now(),
       targetRoles: List<String>.from(data['targetRoles'] as List<dynamic>? ?? []),
+      activityType: data['activityType'] as String? ?? 'General',
     );
   }
 
@@ -50,6 +53,7 @@ class ActivityPost {
       'mediaUrls': mediaUrls,
       'timestamp': timestamp,
       'targetRoles': targetRoles,
+      'activityType': activityType,
     };
   }
 
@@ -64,6 +68,7 @@ class ActivityPost {
     List<String>? mediaUrls,
     Timestamp? timestamp,
     List<String>? targetRoles,
+    String? activityType,
   }) {
     return ActivityPost(
       postId: postId ?? this.postId,
@@ -75,6 +80,7 @@ class ActivityPost {
       mediaUrls: mediaUrls ?? this.mediaUrls,
       timestamp: timestamp ?? this.timestamp,
       targetRoles: targetRoles ?? this.targetRoles,
+      activityType: activityType ?? this.activityType,
     );
   }
 }

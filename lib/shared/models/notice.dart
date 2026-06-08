@@ -9,6 +9,8 @@ class Notice {
   final String createdByUid;
   final Timestamp timestamp;
   final bool isActive;
+  final bool isPinned;
+  final String? targetClassId;
 
   Notice({
     required this.noticeId,
@@ -19,6 +21,8 @@ class Notice {
     required this.createdByUid,
     required this.timestamp,
     this.isActive = true,
+    this.isPinned = false,
+    this.targetClassId,
   });
 
   /// Factory constructor to create a [Notice] from a Firestore [DocumentSnapshot].
@@ -33,6 +37,8 @@ class Notice {
       createdByUid: data['createdByUid'] as String? ?? '',
       timestamp: data['timestamp'] as Timestamp? ?? Timestamp.now(),
       isActive: data['isActive'] as bool? ?? true,
+      isPinned: data['isPinned'] as bool? ?? false,
+      targetClassId: data['targetClassId'] as String?,
     );
   }
 
@@ -46,6 +52,8 @@ class Notice {
       'createdByUid': createdByUid,
       'timestamp': timestamp,
       'isActive': isActive,
+      'isPinned': isPinned,
+      'targetClassId': targetClassId,
     };
   }
 
@@ -59,6 +67,8 @@ class Notice {
     String? createdByUid,
     Timestamp? timestamp,
     bool? isActive,
+    bool? isPinned,
+    String? targetClassId,
   }) {
     return Notice(
       noticeId: noticeId ?? this.noticeId,
@@ -69,6 +79,8 @@ class Notice {
       createdByUid: createdByUid ?? this.createdByUid,
       timestamp: timestamp ?? this.timestamp,
       isActive: isActive ?? this.isActive,
+      isPinned: isPinned ?? this.isPinned,
+      targetClassId: targetClassId ?? this.targetClassId,
     );
   }
 }

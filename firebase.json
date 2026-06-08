@@ -1,0 +1,19 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "preschool-hub-01",
+          "configurations": {
+            "android": "1:456710793829:android:48d5acf88a2f323560348c",
+            "ios": "1:456710793829:ios:e89dc1be30fe2ea860348c",
+            "web": "1:456710793829:web:4b9a8c2f75c15a4f60348c"
+          }
+        }
+      }
+    }
+  }
+}

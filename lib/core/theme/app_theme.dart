@@ -27,7 +27,7 @@ class AppTheme {
       ),
 
       // Sleek Cards with rounded borders and soft shadows
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.0),

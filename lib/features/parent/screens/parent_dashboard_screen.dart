@@ -1,13 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/providers/branding_provider.dart';
 import '../../../shared/models/student.dart';
 import '../../../shared/services/student_service.dart';
-import 'parent_activity_feed.dart';
-import 'parent_attendance_tab.dart';
+import 'tabs/home_tab.dart';
+import 'tabs/diary_tab.dart';
 import 'parent_notices_tab.dart';
 import 'parent_profile_tab.dart';
 
@@ -32,16 +29,14 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _tabs = const [
-    ParentActivityFeed(),
-    ParentAttendanceTab(),
+    HomeTab(),
+    DiaryTab(),
     ParentNoticesTab(),
     ParentProfileTab(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final branding = ref.watch(brandingProvider);
     final childrenAsync = ref.watch(parentChildrenProvider);
     final selectedChild = ref.watch(selectedChildProvider);
 
@@ -57,44 +52,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
     });
 
     return Scaffold(
-      appBar: AppBar(
-        title: childrenAsync.when(
-          data: (children) => _buildChildSelector(children, selectedChild),
-          loading: () => const Text('Loading portal...'),
-          error: (_, __) => const Text('Parent Portal'),
-        ),
-        actions: [
-          // Dynamic School Logo in Header
-          if (branding?.logoUrl.isNotEmpty ?? false)
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: ClipOval(
-                child: CachedNetworkImage(
-                  imageUrl: branding!.logoUrl,
-                  width: 38,
-                  height: 38,
-                  fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => const Icon(Icons.school_rounded),
-                ),
-              ),
-            )
-          else
-            const Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Icon(Icons.school_rounded),
-            ),
-        ],
-        elevation: 0,
-        backgroundColor: theme.colorScheme.surface,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1.0),
-          child: Container(
-            color: theme.colorScheme.outlineVariant.withAlpha(80),
-            height: 1.0,
-          ),
-        ),
-      ),
-      body: _tabs[_currentIndex],
+      body: SafeArea(child: _tabs[_currentIndex]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
@@ -104,14 +62,14 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.feed_outlined),
-            selectedIcon: Icon(Icons.feed_rounded),
-            label: 'Activity Feed',
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month_rounded),
-            label: 'Attendance',
+            icon: Icon(Icons.auto_stories_outlined),
+            selectedIcon: Icon(Icons.auto_stories_rounded),
+            label: 'Diary',
           ),
           NavigationDestination(
             icon: Icon(Icons.campaign_outlined),
@@ -124,40 +82,6 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
             label: 'Profile',
           ),
         ],
-      ),
-    );
-  }
-
-  /// Builds the app bar child selector dropdown or static title depending on child count.
-  Widget _buildChildSelector(List<Student> children, Student? selectedChild) {
-    if (children.isEmpty) {
-      return const Text('Parent Portal');
-    }
-    if (children.length == 1) {
-      return Text(
-        children.first.name,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      );
-    }
-
-    return DropdownButtonHideUnderline(
-      child: DropdownButton<Student>(
-        value: selectedChild ?? (children.isNotEmpty ? children.first : null),
-        icon: const Icon(Icons.arrow_drop_down_rounded, size: 28),
-        items: children.map((Student child) {
-          return DropdownMenuItem<Student>(
-            value: child,
-            child: Text(
-              child.name,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-          );
-        }).toList(),
-        onChanged: (Student? newValue) {
-          if (newValue != null) {
-            ref.read(selectedChildProvider.notifier).state = newValue;
-          }
-        },
       ),
     );
   }
